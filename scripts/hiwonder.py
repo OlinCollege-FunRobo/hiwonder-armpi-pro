@@ -1,4 +1,5 @@
 # hiwonder.py
+import sympy as sp
 """
 Hiwonder Robot Controller
 -------------------------
@@ -7,6 +8,7 @@ Handles the control of the mobile base and 5-DOF robotic arm using commands rece
 
 import time
 import numpy as np
+from numpy import round
 from board_controller import BoardController
 from servo_bus_controller import ServoBusController
 import utils as ut
@@ -22,12 +24,27 @@ class HiwonderRobot:
         self.board = BoardController()
         self.servo_bus = ServoBusController()
 
+        # in meters
+        self.l1, self.l2, self.l3, self.l4, self.l5 = 0.155, 0.099, 0.095, 0.055, 0.105
+        
+        # should be radians
+        # self.theta = [0, 0, 0, 0, 0]
+
+        
         self.joint_values = [0, 0, 90, -30, 0, 0]  # degrees
         self.home_position = [0, 0, 90, -30, 0, 0]  # degrees
+        
         self.joint_limits = [
-            [-120, 120], [-90, 90], [-120, 120],
-            [-100, 100], [-90, 90], [-120, 30]
+             [-120, 120], [-90, 90], [-120, 120],
+             [-100, 100], [-90, 90], [-120, 30]
         ]
+        # self.theta_limits = [
+        #     [-np.pi, np.pi], 
+        #     [-np.pi/3, np.pi], 
+        #     [-np.pi+np.pi/12, np.pi-np.pi/4], 
+        #     [-np.pi+np.pi/12, np.pi-np.pi/12], 
+        #     [-np.pi, np.pi]
+        # ]
         self.joint_control_delay = 0.2 # secs
         self.speed_control_delay = 0.2
 
@@ -61,7 +78,7 @@ class HiwonderRobot:
         print(f'[DEBUG] XYZ position: X: {round(position[0], 3)}, Y: {round(position[1], 3)}, Z: {round(position[2], 3)} \n')
 
 
-    def set_base_velocity(self, cmd: ut.GamepadCmds):
+    def set_base_velocity(self, cmd: ut.GamepadCmds): # Driving the robot, N/A
         """ Computes wheel speeds based on joystick input and sends them to the board """
         """
         motor3 w0|  ↑  |w1 motor1
@@ -91,12 +108,86 @@ class HiwonderRobot:
             cmd (GamepadCmds): Contains linear velocities for the arm.
         """
         vel = [cmd.arm_vx, cmd.arm_vy, cmd.arm_vz]
-
+        print(vel)
         ######################################################################
-        # insert your code for finding "thetalist_dot"
+        # insert your code for finding "thetalist_dot" (FVK)
+
+        t0, t1, t2, t3, t4  = sp.symbols('t0 t1 t2 t3 t4 ')
+
+        m01j = sp.Matrix([[sp.cos(t0), 0, sp.sin(t0), 0],
+                            [sp.sin(t0), 0, -sp.cos(t0), 0], 
+                            [0, 1, 0, self.l1], 
+                            [0, 0, 0, 1]])
+
+        m12j = sp.Matrix([[sp.cos(t1), -sp.sin(t1), 0, self.l2 * sp.cos(t1)],
+                            [sp.sin(t1), sp.cos(t1), 0, self.l2 * sp.sin(t1)], 
+                            [0, 0, 1, 0], 
+                            [0, 0, 0, 1]])
+
+        m23j = sp.Matrix([[sp.cos(t2),-sp.sin(t2),0,self.l3 * sp.cos(t2)],
+                [sp.sin(t2),sp.cos(t2),0,self.l3 * sp.sin(t2)],
+                [0,0,1,0],
+                [0,0,0,1]])
+            
+        m34j = sp.Matrix([[sp.cos(t3),-sp.sin(t3),0,self.l4* sp.cos(t3)],
+                [sp.sin(t3),sp.cos(t3),0,self.l4 * sp.sin(t3)],
+                [0,0,1,0],
+                [0,0,0,1]])
+            
+        m45j = sp.Matrix([[0 , 0 , 1 , 0],
+                            [-1 , 0 , 0 , 0],
+                            [0 , 1 , 0 , 0],
+                            [0 , 0 , 0, 1]])
+            
+        m56j = sp.Matrix([[sp.cos(t4), -sp.sin(t4), 0, 0],
+                            [sp.sin(t4), sp.cos(t4), 0, 0],
+                            [0 , 0 , 1 , self.l4 + self.l5],
+                            [0 , 0 , 0 , 1]])
+
+        Hm = m01j * m12j * m23j * m34j * m45j * m56j
+        #print(Hm)
+        Hx = Hm[0, 3]
+        Hy = Hm[1 , 3]
+        Hz = Hm[2 , 3]
+
+        # [row, column]
+    
+        jacobian = sp.Matrix([[sp.diff(Hx, t0), sp.diff(Hx, t1), sp.diff(Hx, t2),sp.diff(Hx, t3), sp.diff(Hx, t4)],
+                           [sp.diff(Hy, t0), sp.diff(Hy, t1), sp.diff(Hy, t2),sp.diff(Hy, t3), sp.diff(Hy, t4)],
+                           [sp.diff(Hz, t0), sp.diff(Hz, t1), sp.diff(Hz, t2),sp.diff(Hz, t3), sp.diff(Hz, t4)],
+                           ])
+
+
+        # This will not work because of variable names
+        jacobian = jacobian.evalf(subs={t0: self.joint_values[0]})
+        jacobian =  jacobian.evalf(subs={t1: self.joint_values[1]})
+        jacobian =  jacobian.evalf(subs={t2: self.joint_values[2]})
+        jacobian =  jacobian.evalf(subs={t3: self.joint_values[3]})
+        jacobian =  jacobian.evalf(subs={t4: self.joint_values[4]})
+
+        #print("Jacobian", jacobian)
+        #print()
+
+        invJac =  np.array(sp.transpose(jacobian) * (( (jacobian * sp.transpose(jacobian)) + sp.eye(3)*.0001) **-1 ))
+       # print( jacobian * sp.transpose(jacobian)* sp.eye(3)*1.0001) 
+        #print("hi", invJac)
+        npVel = np.array([vel])
+        #print("shape of vel", np.shape(npVel))
+        #print("shape of invJac",  np.shape(invJac))
+        #print(invJac)
+        thetaDot = np.matmul(invJac, np.transpose(npVel))
+        #print("thetadot shape", np.shape(thetaDot))
 
         thetalist_dot = [0]*5
 
+        # # seems like this code is already written underneath
+        # timeStep = 0.02
+        # for i in range(len(self.theta)):
+        #     #print(self.theta[i])
+        #     self.theta[i] = self.theta[i] + (float(thetaDot[i][0]) * timeStep)
+        #     # print(type(self.theta[i]))
+
+        print(cmd.arm_j1)
         ######################################################################
 
 
@@ -106,12 +197,12 @@ class HiwonderRobot:
 
         # Update joint angles
         dt = 0.5 # Fixed time step
-        K = 1600 # mapping gain for individual joint control
+        K = .5 # mapping gain for individual joint control
         new_thetalist = [0.0]*6
 
         # linear velocity control
         for i in range(5):
-            new_thetalist[i] = self.joint_values[i] + dt * thetalist_dot[i]
+            new_thetalist[i] = self.joint_values[i] + dt * float(thetaDot[i][0]) # thetalist_dot[i]
         # individual joint control
         new_thetalist[0] += dt * K * cmd.arm_j1
         new_thetalist[1] += dt * K * cmd.arm_j2

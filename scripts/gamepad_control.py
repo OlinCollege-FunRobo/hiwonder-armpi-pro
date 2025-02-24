@@ -87,17 +87,17 @@ class GamepadControl:
         code_map = {
             'ABS_X': ('abs_x', event.state),
             'ABS_Y': ('abs_y', event.state),
-            'ABS_Z': ('abs_z', event.state),
-            'ABS_RZ': ('abs_rz', event.state),
-            'BTN_WEST': ('MOBILE_BASE_FLAG', bool(event.state)),
-            'BTN_Z': ('ARM_FLAG', bool(event.state)),
-            'BTN_NORTH': ('ARM_J1_FLAG', bool(event.state)),
-            'BTN_C': ('ARM_J2_FLAG', bool(event.state)),
-            'BTN_EAST': ('ARM_J3_FLAG', bool(event.state)),
-            'BTN_SOUTH': ('ARM_J4_FLAG', bool(event.state)),
-            'BTN_TR': ('ARM_J5_FLAG', bool(event.state)),
+            'ABS_RY': ('abs_z', event.state),
+            # 'ABS_RZ': ('abs_rz', event.state),
+            # 'BTN_WEST': ('MOBILE_BASE_FLAG', bool(event.state)),
+            'BTN_TR': ('ARM_FLAG', bool(event.state)),
+            'BTN_WEST': ('ARM_J1_FLAG', bool(event.state)),
+            'BTN_EAST': ('ARM_J2_FLAG', bool(event.state)),
+            'BTN_SOUTH': ('ARM_J3_FLAG', bool(event.state)),
+            'BTN_NORTH': ('ARM_J4_FLAG', bool(event.state)),
+            'BTN_START': ('ARM_J5_FLAG', bool(event.state)),
             'BTN_TL': ('ARM_EE_FLAG', bool(event.state)),
-            'BTN_TL2': ('ARM_HOME', bool(event.state))
+            'BTN_SELECT': ('ARM_HOME', bool(event.state))
         }
 
         if event.code in code_map:
