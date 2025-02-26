@@ -1,4 +1,4 @@
-from hiwonder2 import HiwonderRobot
+from hiwonder import HiwonderRobot
 import time
 import traceback
 
@@ -24,7 +24,7 @@ def main():
             if case == 0:
                 try:
                     joint_id = int(input("Enter joint ID (1-6): ").strip())
-                    print(f"Position of joint {joint_id}: {robot.get_joint_value(joint_id)}")
+                    print(f"Position of joint {joint_id}: {robot.joint_values[joint_id]}")
                 except ValueError:
                     print("Invalid input. Please enter a valid joint ID.")
 
@@ -40,7 +40,7 @@ def main():
                     joint_id, theta = [int(s) for s in input("Enter joint ID and angle (e.g., 2,30): ").split(",")]
                     robot.set_joint_value(joint_id, theta)
                     time.sleep(1.0)
-                    print(f"Position of joint {joint_id}: {robot.get_joint_value(joint_id)}")
+                    print(f"Position of joint {joint_id}: {robot.joint_values[joint_id]}")
                 except ValueError:
                     print("Invalid input. Please enter valid numbers.")
 
@@ -49,7 +49,7 @@ def main():
                     thetalist = [int(s) for s in input("Enter joint angles (e.g., 2,30,20,20,30,10): ").split(",")]
                     robot.set_joint_values(thetalist)
                     time.sleep(0.5)
-                    print(f"Joint values: {robot.get_joint_values()}")
+                    print(f"Joint values: {robot.joint_values}")
                 except ValueError:
                     print("Invalid input. Please enter valid numbers.")
 
