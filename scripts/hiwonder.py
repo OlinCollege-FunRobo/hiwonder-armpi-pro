@@ -1,5 +1,4 @@
 # hiwonder.py
-import sympy as sp
 """
 Hiwonder Robot Controller
 -------------------------
@@ -12,6 +11,8 @@ from numpy import round
 from board_controller import BoardController
 from servo_bus_controller import ServoBusController
 import utils as ut
+import sympy as sp
+
 
 # Robot base constants
 WHEEL_RADIUS = 0.047  # meters
@@ -124,14 +125,14 @@ class HiwonderRobot:
                             [0, 0, 1, 0], 
                             [0, 0, 0, 1]])
 
-        m23j = sp.Matrix([[sp.cos(t2),-sp.sin(t2),0,self.l3 * sp.cos(t2)],
-                [sp.sin(t2),sp.cos(t2),0,self.l3 * sp.sin(t2)],
-                [0,0,1,0],
+        m23j = sp.Matrix([[sp.cos(t2),sp.sin(t2),0,self.l3 * sp.cos(t2)],
+                [sp.sin(t2),-sp.cos(t2),0,self.l3 * sp.sin(t2)],
+                [0,0,-1,0],
                 [0,0,0,1]])
             
-        m34j = sp.Matrix([[sp.cos(t3),-sp.sin(t3),0,self.l4* sp.cos(t3)],
-                [sp.sin(t3),sp.cos(t3),0,self.l4 * sp.sin(t3)],
-                [0,0,1,0],
+        m34j = sp.Matrix([[sp.cos(t3),sp.sin(t3),0,self.l4* sp.cos(t3)],
+                [sp.sin(t3),-sp.cos(t3),0,self.l4 * sp.sin(t3)],
+                [0,0,-1,0],
                 [0,0,0,1]])
             
         m45j = sp.Matrix([[0 , 0 , 1 , 0],
@@ -172,6 +173,14 @@ class HiwonderRobot:
        # print( jacobian * sp.transpose(jacobian)* sp.eye(3)*1.0001) 
         #print("hi", invJac)
         npVel = np.array([vel])
+
+        max_vel = 2
+
+        for i in range(3):
+            if npVel[0][i]> max_vel:
+                npVel[0][i] = max_vel
+            elif npVel[0][i] < -max_vel:
+                npVel[0][i] = -max_vel
         #print("shape of vel", np.shape(npVel))
         #print("shape of invJac",  np.shape(invJac))
         #print(invJac)
@@ -192,8 +201,8 @@ class HiwonderRobot:
 
 
         print(f'[DEBUG] Current thetalist (deg) = {self.joint_values}') 
-        print(f'[DEBUG] linear vel: {[round(vel[0], 3), round(vel[1], 3), round(vel[2], 3)]}')
-        print(f'[DEBUG] thetadot (deg/s) = {[round(td,2) for td in thetalist_dot]}')
+        print(f'[DEBUG] linear vel: {npVel=}')
+        print(f'[DEBUG] thetadot (deg/s) = {thetaDot=}')
 
         # Update joint angles
         dt = 0.5 # Fixed time step
@@ -203,6 +212,7 @@ class HiwonderRobot:
         # linear velocity control
         for i in range(5):
             new_thetalist[i] = self.joint_values[i] + dt * float(thetaDot[i][0]) # thetalist_dot[i]
+       
         # individual joint control
         new_thetalist[0] += dt * K * cmd.arm_j1
         new_thetalist[1] += dt * K * cmd.arm_j2
