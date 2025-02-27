@@ -98,6 +98,7 @@ class GamepadControl:
             'BTN_EAST': ('ARM_J2_FLAG', bool(event.state)),
             'BTN_SOUTH': ('ARM_J3_FLAG', bool(event.state)),
             'BTN_NORTH': ('ARM_J4_FLAG', bool(event.state)),
+
             'ABS_RZ': ('ARM_J5_FLAG', bool(event.state)),
             'ABS_Z': ('ARM_EE_FLAG', bool(event.state)),
             'BTN_SELECT': ('ARM_HOME', bool(event.state))
