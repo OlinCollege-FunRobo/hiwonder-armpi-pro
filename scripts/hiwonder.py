@@ -139,14 +139,14 @@ class HiwonderRobot:
             J_inv = np.linalg.pinv(J)
             thetalist_dot = np.dot(np.array(vel), J_inv)
             thetalist_dot = np.append(thetalist_dot, 0.0)
-            print(f'[DEBUG] Input Velocities: {cmd.arm_vx}, {cmd.arm_vy}, {cmd.arm_vz}')
-            print(f'[DEBUG] Current thetalist (deg) = {self.joint_values}') 
-            print(f'[DEBUG] linear vel: {[round(vel[0], 3), round(vel[1], 3), round(vel[2], 3)]}')
-            print(f'[DEBUG] thetadot (deg/s) = {[round(td,2) for td in thetalist_dot]}')
+            # print(f'[DEBUG] Input Velocities: {cmd.arm_vx}, {cmd.arm_vy}, {cmd.arm_vz}')
+            # print(f'[DEBUG] Current thetalist (deg) = {self.joint_values}') 
+            # print(f'[DEBUG] linear vel: {[round(vel[0], 3), round(vel[1], 3), round(vel[2], 3)]}')
+            # print(f'[DEBUG] thetadot (deg/s) = {[round(td,2) for td in thetalist_dot]}')
 
             # Update joint angles
             dt = 0.5 # Fixed time step
-            K = 10 # mapping gain for individual joint control
+            K = 5 # mapping gain for individual joint control
             new_thetalist = [0.0]*6
 
             # linear velocity control

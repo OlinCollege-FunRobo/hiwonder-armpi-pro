@@ -140,6 +140,8 @@ def dh_to_matrix(dh_params: list) -> np.ndarray:
         np.ndarray: A 4x4 transformation matrix.
     """
     theta, d, a, alpha = dh_params
+    theta = np.radians(theta)
+    alpha = np.radians(alpha)
     return np.array([
         [cos(theta), -sin(theta) * cos(alpha), sin(theta) * sin(alpha), a * cos(theta)],
         [sin(theta), cos(theta) * cos(alpha), -cos(theta) * sin(alpha), a * sin(theta)],
