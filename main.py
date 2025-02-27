@@ -66,6 +66,7 @@ def main():
 
             if cmdlist:
                 latest_cmd = cmdlist[-1]
+                print(latest_cmd)
                 robot.set_robot_commands(latest_cmd)
 
             elapsed = time.time() - cycle_start

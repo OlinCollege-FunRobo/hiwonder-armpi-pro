@@ -15,6 +15,11 @@ import utils as ut
 WHEEL_RADIUS = 0.047  # meters
 BASE_LENGTH_X = 0.096  # meters
 BASE_LENGTH_Y = 0.105  # meters
+L1 = 15.5 * 0.01
+L2 = 9.9 * 0.01
+L3 = 9.5 * 0.01
+L4 = 5.5 * 0.01
+L5 = 10.5 * 0.01
 
 class HiwonderRobot:
     def __init__(self):
@@ -85,46 +90,81 @@ class HiwonderRobot:
     # -------------------------------------------------------------
 
     def set_arm_velocity(self, cmd: ut.GamepadCmds):
-        """Calculates and sets new joint angles from linear velocities.
+            """Calculates and sets new joint angles from linear velocities.
 
-        Args:
-            cmd (GamepadCmds): Contains linear velocities for the arm.
-        """
-        vel = [cmd.arm_vx, cmd.arm_vy, cmd.arm_vz]
+            Args:
+                cmd (GamepadCmds): Contains linear velocities for the arm.
+            """
+            J = np.zeros((5, 3))
 
-        ######################################################################
-        # insert your code for finding "thetalist_dot"
+            vel = [cmd.arm_vx, cmd.arm_vy, cmd.arm_vz]
 
-        thetalist_dot = [0]*5
-
-        ######################################################################
+            theta = self.joint_values[:5]
 
 
-        print(f'[DEBUG] Current thetalist (deg) = {self.joint_values}') 
-        print(f'[DEBUG] linear vel: {[round(vel[0], 3), round(vel[1], 3), round(vel[2], 3)]}')
-        print(f'[DEBUG] thetadot (deg/s) = {[round(td,2) for td in thetalist_dot]}')
+            DH = [
+                [theta[0], L1, 0, -90],
+                [theta[1] - 90, 0, L2, 180],
+                [theta[2], 0, L3, 180],
+                [theta[3] + 90, 0, 0, 90],
+                [theta[4], L4 + L5, 0, 0],
+            ]
 
-        # Update joint angles
-        dt = 0.5 # Fixed time step
-        K = 1600 # mapping gain for individual joint control
-        new_thetalist = [0.0]*6
+            T = np.stack(
+                [
+                    ut.dh_to_matrix(DH[0]),
+                    ut.dh_to_matrix(DH[1]),
+                    ut.dh_to_matrix(DH[2]),
+                    ut.dh_to_matrix(DH[3]),
+                    ut.dh_to_matrix(DH[4]),
+                ],
+                axis=0,
+            )
 
-        # linear velocity control
-        for i in range(5):
-            new_thetalist[i] = self.joint_values[i] + dt * thetalist_dot[i]
-        # individual joint control
-        new_thetalist[0] += dt * K * cmd.arm_j1
-        new_thetalist[1] += dt * K * cmd.arm_j2
-        new_thetalist[2] += dt * K * cmd.arm_j3
-        new_thetalist[3] += dt * K * cmd.arm_j4
-        new_thetalist[4] += dt * K * cmd.arm_j5
-        new_thetalist[5] = self.joint_values[5] + dt * K * cmd.arm_ee
+            T_cumulative = [np.eye(4)]
+            for i in range(5):
+                T_cumulative.append(T_cumulative[-1] @ T[i])
 
-        new_thetalist = [round(theta,2) for theta in new_thetalist]
-        print(f'[DEBUG] Commanded thetalist (deg) = {new_thetalist}')       
-        
-        # set new joint angles
-        self.set_joint_values(new_thetalist, radians=False)
+            d = T_cumulative[-1] @ np.vstack([0, 0, 0, 1])
+
+            # Calculate the robot points by applying the cumulative transformations
+            for i in range(0, 5):
+                T_i = T_cumulative[i]
+                z = T_i @ np.vstack([0, 0, 1, 0])
+                d1 = T_i @ np.vstack([0, 0, 0, 1])
+                r = np.array([d[0] - d1[0], d[1] - d1[1], d[2] - d1[2]]).flatten()
+                J[i] = np.cross(z[:3].flatten(), r.flatten())
+                
+
+            J_inv = np.linalg.pinv(J)
+            thetalist_dot = np.dot(np.array(vel), J_inv)
+            thetalist_dot = np.append(thetalist_dot, 0.0)
+            # print(f'[DEBUG] Input Velocities: {cmd.arm_vx}, {cmd.arm_vy}, {cmd.arm_vz}')
+            # print(f'[DEBUG] Current thetalist (deg) = {self.joint_values}') 
+            # print(f'[DEBUG] linear vel: {[round(vel[0], 3), round(vel[1], 3), round(vel[2], 3)]}')
+            # print(f'[DEBUG] thetadot (deg/s) = {[round(td,2) for td in thetalist_dot]}')
+
+            # Update joint angles
+            dt = 0.5 # Fixed time step
+            K = 5 # mapping gain for individual joint control
+            new_thetalist = [0.0]*6
+
+            # linear velocity control
+            for i in range(5):
+                new_thetalist[i] = self.joint_values[i] + dt * thetalist_dot[i]
+            # individual joint control
+            new_thetalist[0] += dt * K * cmd.arm_j1
+            new_thetalist[1] += dt * K * cmd.arm_j2
+            new_thetalist[2] += dt * K * cmd.arm_j3
+            new_thetalist[3] += dt * K * cmd.arm_j4
+            new_thetalist[4] += dt * K * cmd.arm_j5
+            new_thetalist[5] = self.joint_values[5] + dt * K * cmd.arm_ee
+
+            new_thetalist = [round(theta,2) for theta in new_thetalist]
+            print(f'[DEBUG] Commanded thetalist (deg) = {new_thetalist}')       
+            
+            # set new joint angles
+            self.set_joint_values(new_thetalist, radians=False)
 
 
     def set_joint_value(self, joint_id: int, theta: float, duration=250, radians=False):

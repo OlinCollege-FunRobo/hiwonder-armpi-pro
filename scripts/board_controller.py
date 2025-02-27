@@ -22,7 +22,7 @@ MotorEncoderPolarity = 0
 
 
 class BoardController:
-    def __init__(self, i2c_addr=0x7A, i2c_bus=1):
+    def __init__(self, i2c_addr=0x7A, i2c_bus=20):
         if sys.version_info.major == 2:
             print('Please run this program with Python 3!')
             sys.exit(0)
