@@ -159,9 +159,9 @@ def dh_sympi_to_matrix(dh_params: list):
     """
     theta, d, a, alpha = dh_params
     return sp.Matrix([
-        [sp.cos(theta), -sp.sin(theta) * sp.cos(alpha), sp.sin(theta) * sp.sin(alpha), a * sp.cos(theta)],
-        [sp.sin(theta), sp.cos(theta) * sp.cos(alpha), -sp.cos(theta) * sp.sin(alpha), a * sp.sin(theta)],
-        [0, sp.sin(alpha), sp.cos(alpha), d],
+        [sp.cos(theta), -sp.sin(theta) * cos(alpha), sp.sin(theta) * sin(alpha), a * sp.cos(theta)],
+        [sp.sin(theta), sp.cos(theta) * cos(alpha), -sp.cos(theta) * sin(alpha), a * sp.sin(theta)],
+        [0, sin(alpha), cos(alpha), d],
         [0, 0, 0, 1]
     ])
 

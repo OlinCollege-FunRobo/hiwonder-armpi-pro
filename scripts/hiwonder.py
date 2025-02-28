@@ -110,7 +110,6 @@ class HiwonderRobot:
             cmd (GamepadCmds): Contains linear velocities for the arm.
         """
         vel = [cmd.arm_vx, cmd.arm_vy, cmd.arm_vz]
-        print(vel)
         ######################################################################
         # insert your code for finding "thetalist_dot" (FVK)
         
@@ -119,8 +118,8 @@ class HiwonderRobot:
         arr = []
         dhTable = [[t0, self.l1, 0, math.pi/2],
                    [math.pi/2, 0, 0, 0],
-                   [t1, 0, self.l2, 0],
-                   [t2, 0, self.l3, 0], 
+                   [t1, 0, self.l2, math.pi],
+                   [t2, 0, self.l3, math.pi], 
                    [t3, 0, self.l4, 0],
                    [-math.pi/2, 0, 0, -math.pi/2],
                    [t4, self.l5, 0, 0]]
@@ -131,6 +130,7 @@ class HiwonderRobot:
         #print(arr[0])
         #print(type(arr[0]))
         Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
+        #print(arr)
         
 
 
@@ -149,7 +149,7 @@ class HiwonderRobot:
 
 
         # This will not work because of variable names
-        print(self.joint_values)
+        # print(self.joint_values)
         jacobian = jacobian.evalf(subs={t0: sp.rad(self.joint_values[0])})
         jacobian =  jacobian.evalf(subs={t1: sp.rad(self.joint_values[1])})
         jacobian =  jacobian.evalf(subs={t2: sp.rad(self.joint_values[2])})
@@ -177,7 +177,7 @@ class HiwonderRobot:
         thetaDot = np.matmul(invJac, np.transpose(npVel))
         #print("thetadot shape", np.shape(thetaDot))
 
-        print(cmd.arm_j1)
+        # print(cmd.arm_j1)
         ######################################################################
 
 
@@ -186,14 +186,14 @@ class HiwonderRobot:
         print(f'[DEBUG] thetadot (deg/s) = {thetaDot=}')
 
         # Update joint angles
-        dt = 0.5 # Fixed time step
+        dt = 0.2 # Fixed time step
         K_ind = 200 # mapping gain for individual joint control
-        K_tot = 1
+        #K_tot = 1
         new_thetalist = [0.0]*6
 
         # linear velocity control
         for i in range(5):
-            new_thetalist[i] = self.joint_values[i] + dt * K_tot * np.rad2deg(float((thetaDot[i][0]))) # thetalist_dot[i]
+            new_thetalist[i] = self.joint_values[i] + dt * np.rad2deg(float((thetaDot[i][0]))) # thetalist_dot[i]
        
         # individual joint control
         new_thetalist[0] += dt * K_ind * cmd.arm_j1
