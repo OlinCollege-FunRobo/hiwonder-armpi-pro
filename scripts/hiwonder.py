@@ -12,6 +12,7 @@ from board_controller import BoardController
 from servo_bus_controller import ServoBusController
 import utils as ut
 import sympy as sp
+import math
 
 
 # Robot base constants
@@ -112,40 +113,28 @@ class HiwonderRobot:
         print(vel)
         ######################################################################
         # insert your code for finding "thetalist_dot" (FVK)
-
+        
         t0, t1, t2, t3, t4  = sp.symbols('t0 t1 t2 t3 t4 ')
 
-        m01j = sp.Matrix([[sp.cos(t0), 0, sp.sin(t0), 0],
-                            [sp.sin(t0), 0, -sp.cos(t0), 0], 
-                            [0, 1, 0, self.l1], 
-                            [0, 0, 0, 1]])
+        arr = []
+        dhTable = [[t0, self.l1, 0, math.pi/2],
+                   [math.pi/2, 0, 0, 0],
+                   [t1, 0, self.l2, 0],
+                   [t2, 0, self.l3, 0], 
+                   [t3, 0, self.l4, 0],
+                   [-math.pi/2, 0, 0, -math.pi/2],
+                   [t4, self.l5, 0, 0]]
+        
+        for i in range(len(dhTable)):
+            arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
+        
+        #print(arr[0])
+        #print(type(arr[0]))
+        Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
+        
 
-        m12j = sp.Matrix([[sp.cos(t1), -sp.sin(t1), 0, self.l2 * sp.cos(t1)],
-                            [sp.sin(t1), sp.cos(t1), 0, self.l2 * sp.sin(t1)], 
-                            [0, 0, 1, 0], 
-                            [0, 0, 0, 1]])
 
-        m23j = sp.Matrix([[sp.cos(t2),sp.sin(t2),0,self.l3 * sp.cos(t2)],
-                [sp.sin(t2),-sp.cos(t2),0,self.l3 * sp.sin(t2)],
-                [0,0,-1,0],
-                [0,0,0,1]])
-            
-        m34j = sp.Matrix([[sp.cos(t3),sp.sin(t3),0,self.l4* sp.cos(t3)],
-                [sp.sin(t3),-sp.cos(t3),0,self.l4 * sp.sin(t3)],
-                [0,0,-1,0],
-                [0,0,0,1]])
-            
-        m45j = sp.Matrix([[0 , 0 , 1 , 0],
-                            [-1 , 0 , 0 , 0],
-                            [0 , 1 , 0 , 0],
-                            [0 , 0 , 0, 1]])
-            
-        m56j = sp.Matrix([[sp.cos(t4), -sp.sin(t4), 0, 0],
-                            [sp.sin(t4), sp.cos(t4), 0, 0],
-                            [0 , 0 , 1 , self.l4 + self.l5],
-                            [0 , 0 , 0 , 1]])
-
-        Hm = m01j * m12j * m23j * m34j * m45j * m56j
+        #Hm = m01j * m12j * m23j * m34j * m45j * m56j
         #print(Hm)
         Hx = Hm[0, 3]
         Hy = Hm[1 , 3]
@@ -160,11 +149,12 @@ class HiwonderRobot:
 
 
         # This will not work because of variable names
-        jacobian = jacobian.evalf(subs={t0: self.joint_values[0]})
-        jacobian =  jacobian.evalf(subs={t1: self.joint_values[1]})
-        jacobian =  jacobian.evalf(subs={t2: self.joint_values[2]})
-        jacobian =  jacobian.evalf(subs={t3: self.joint_values[3]})
-        jacobian =  jacobian.evalf(subs={t4: self.joint_values[4]})
+        print(self.joint_values)
+        jacobian = jacobian.evalf(subs={t0: sp.rad(self.joint_values[0])})
+        jacobian =  jacobian.evalf(subs={t1: sp.rad(self.joint_values[1])})
+        jacobian =  jacobian.evalf(subs={t2: sp.rad(self.joint_values[2])})
+        jacobian =  jacobian.evalf(subs={t3: sp.rad(self.joint_values[3])})
+        jacobian =  jacobian.evalf(subs={t4: sp.rad(self.joint_values[4])})
 
         #print("Jacobian", jacobian)
         #print()
@@ -187,15 +177,6 @@ class HiwonderRobot:
         thetaDot = np.matmul(invJac, np.transpose(npVel))
         #print("thetadot shape", np.shape(thetaDot))
 
-        thetalist_dot = [0]*5
-
-        # # seems like this code is already written underneath
-        # timeStep = 0.02
-        # for i in range(len(self.theta)):
-        #     #print(self.theta[i])
-        #     self.theta[i] = self.theta[i] + (float(thetaDot[i][0]) * timeStep)
-        #     # print(type(self.theta[i]))
-
         print(cmd.arm_j1)
         ######################################################################
 
@@ -206,20 +187,21 @@ class HiwonderRobot:
 
         # Update joint angles
         dt = 0.5 # Fixed time step
-        K = .5 # mapping gain for individual joint control
+        K_ind = 200 # mapping gain for individual joint control
+        K_tot = 1
         new_thetalist = [0.0]*6
 
         # linear velocity control
         for i in range(5):
-            new_thetalist[i] = self.joint_values[i] + dt * float(thetaDot[i][0]) # thetalist_dot[i]
+            new_thetalist[i] = self.joint_values[i] + dt * K_tot * np.rad2deg(float((thetaDot[i][0]))) # thetalist_dot[i]
        
         # individual joint control
-        new_thetalist[0] += dt * K * cmd.arm_j1
-        new_thetalist[1] += dt * K * cmd.arm_j2
-        new_thetalist[2] += dt * K * cmd.arm_j3
-        new_thetalist[3] += dt * K * cmd.arm_j4
-        new_thetalist[4] += dt * K * cmd.arm_j5
-        new_thetalist[5] = self.joint_values[5] + dt * K * cmd.arm_ee
+        new_thetalist[0] += dt * K_ind * cmd.arm_j1
+        new_thetalist[1] += dt * K_ind * cmd.arm_j2
+        new_thetalist[2] += dt * K_ind * cmd.arm_j3
+        new_thetalist[3] += dt * K_ind * cmd.arm_j4
+        new_thetalist[4] += dt * K_ind * cmd.arm_j5
+        new_thetalist[5] = self.joint_values[5] + dt * K_ind * cmd.arm_ee
 
         new_thetalist = [round(theta,2) for theta in new_thetalist]
         print(f'[DEBUG] Commanded thetalist (deg) = {new_thetalist}')       
