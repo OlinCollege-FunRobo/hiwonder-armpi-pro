@@ -115,24 +115,59 @@ class HiwonderRobot:
         
         t0, t1, t2, t3, t4  = sp.symbols('t0 t1 t2 t3 t4 ')
 
-        arr = []
-        dhTable = [[t0, self.l1, 0, math.pi/2],
-                   [math.pi/2, 0, 0, 0],
-                   [t1, 0, self.l2, math.pi],
-                   [t2, 0, self.l3, math.pi], 
-                   [t3, 0, self.l4, 0],
-                   [-math.pi/2, 0, 0, -math.pi/2],
-                   [t4, self.l5, 0, 0]]
+        # arr = []
+        # dhTable = [[t0, self.l1, 0, math.pi/2],
+        #            [math.pi/2, 0, 0, 0],
+        #            [t1, 0, self.l2, math.pi],
+        #            [t2, 0, self.l3, math.pi], 
+        #            [t3, 0, self.l4, 0],
+        #            [-math.pi/2, 0, 0, -math.pi/2],
+        #            [t4, self.l5, 0, 0]]
         
-        for i in range(len(dhTable)):
-            arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
+        # for i in range(len(dhTable)):
+        #     arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
         
-        #print(arr[0])
-        #print(type(arr[0]))
-        Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
-        #print(arr)
+        # #print(arr[0])
+        # #print(type(arr[0]))
+        # Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
+        # #print(arr)
         
-
+        h0_0_5 = sp.Matrix([[sp.cos(t0), 0, sp.sin(t0), 0],
+               [sp.sin(t0), 0, -sp.cos(t0), 0],
+               [0, 1, 0, self.l1],
+               [0, 0, 0, 1]])
+        
+        h0_5_1 = sp.Matrix([[0, -1, 0, 0],
+               [1, 0, 0, 0],
+               [0, 0, 1, 0],
+               [0, 0, 0, 1]])
+        
+        h1_2 = sp.Matrix([[sp.cos(t1), sp.sin(t1), 0, self.l2*sp.cos(t1)],
+                [sp.sin(t1), -sp.cos(t1), 0, self.l2*sp.sin(t1)],
+                [0, 0, -1, 0],
+                [0, 0, 0, 1]])
+        
+        h2_3 = sp.Matrix([[sp.cos(t2), sp.sin(t2), 0, self.l3*sp.cos(t2)],
+                [sp.sin(t2), -sp.cos(t2), 0, self.l3*sp.sin(t2)],
+                [0, 0, -1, 0],
+                [0, 0, 0, 1]])
+        
+        h3_3_5 = sp.Matrix([[sp.cos(t3),-sp.sin(t3),0,self.l4*sp.cos(t3)],
+            [sp.sin(t3),sp.cos(t3),0,self.l4*sp.cos(t3),],
+            [0,0,1,0],
+            [0,0,0,1]])
+        
+        h3_5_4 = sp.Matrix([[0,0,1,0],
+            [-1,0,0,0],
+            [0,-1,0,0],
+            [0,0,0,1]])
+        
+        h4_5 = sp.Matrix([[sp.cos(t4),-sp.sin(t4),0,0],
+            [sp.sin(t4),sp.cos(t4),0,0],
+            [0,0,1,self.l5],
+            [0,0,0,1]])
+        
+        Hm = h0_0_5 * h0_5_1 * h1_2 * h2_3 * h3_3_5 * h3_5_4 * h4_5
 
         #Hm = m01j * m12j * m23j * m34j * m45j * m56j
         #print(Hm)
@@ -186,9 +221,9 @@ class HiwonderRobot:
         print(f'[DEBUG] thetadot (deg/s) = {thetaDot=}')
 
         # Update joint angles
-        dt = 0.2 # Fixed time step
+        dt = 0.1 # Fixed time step
         K_ind = 200 # mapping gain for individual joint control
-        #K_tot = 1
+        #K_tot = 10
         new_thetalist = [0.0]*6
 
         # linear velocity control
