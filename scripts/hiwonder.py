@@ -183,6 +183,11 @@ class HiwonderRobot:
 
         kHat = np.array([0, 0, 1])
 
+        print(np.shape(h2_3))
+        print(h2_3)
+        print(h2_3[:3, :3])
+        print(h2_3[:3, 3])
+
         print("rotation", np.shape(h0_1[:3, :3]), "khat", np.shape(kHat))
         print("z", np.shape(h0_1[:3, :3] @ kHat), "r", np.shape(h0_1[:3, 3].reshape(3, 1)))
 
@@ -191,14 +196,11 @@ class HiwonderRobot:
         j3 = np.cross((h2_3[:3, :3] @ kHat).flatten(), h2_3[:3, 3])
         j4 = np.cross((h3_4[:3, :3] @ kHat).flatten(), h3_4[:3, 3])
         j5 = np.cross((h4_5[:3, :3] @ kHat).flatten(), h4_5[:3, 3])
-        #Hm = h0_0_5 * h0_5_1 * h1_2 * h2_3 * h3_3_5 * h3_5_4 * h4_5
+
+        # makes it a 3x5 matrix 
         jacobian = np.column_stack((j1, j2, j3, j4, j5))
-        #Hm = m01j * m12j * m23j * m34j * m45j * m56j
         #print(Hm)
     
-
-        # [row, column
-
         invJac =  np.array(np.transpose(jacobian) @ (np.linalg.inv( (jacobian @ np.transpose(jacobian)) + np.eye(3)*.0001) ))
        # print( jacobian * sp.transpose(jacobian)* sp.eye(3)*1.0001) 
         #print("hi", invJac)
