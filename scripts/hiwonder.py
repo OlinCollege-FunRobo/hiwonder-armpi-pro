@@ -11,8 +11,6 @@ from numpy import round
 from board_controller import BoardController
 from servo_bus_controller import ServoBusController
 import utils as ut
-import sympy as sp
-import math
 
 
 # Robot base constants
@@ -113,53 +111,95 @@ class HiwonderRobot:
         ######################################################################
         # insert your code for finding "thetalist_dot" (FVK)
         
-        t0, t1, t2, t3, t4  = sp.symbols('t0 t1 t2 t3 t4 ')
+        t0, t1, t2, t3, t4, t5 = np.radians(self.joint_values)
 
-        arr = []
-        dhTable = [[t0, self.l1, 0, math.pi/2],
-                   [math.pi/2, 0, 0, 0],
-                   [t1, 0, self.l2, math.pi],
-                   [t2, 0, self.l3, math.pi], 
-                   [t3, 0, self.l4, 0],
-                   [-math.pi/2, 0, 0, -math.pi/2],
-                   [t4, self.l5, 0, 0]]
+        # arr = []
+        # dhTable = [[t0, self.l1, 0, math.pi/2],
+        #            [math.pi/2, 0, 0, 0],
+        #            [t1, 0, self.l2, math.pi],
+        #            [t2, 0, self.l3, math.pi], 
+        #            [t3, 0, self.l4, 0],
+        #            [-math.pi/2, 0, 0, -math.pi/2],
+        #            [t4, self.l5, 0, 0]]
         
-        for i in range(len(dhTable)):
-            arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
+        # for i in range(len(dhTable)):
+        #     arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
         
-        #print(arr[0])
-        #print(type(arr[0]))
-        Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
-        #print(arr)
+        # #print(arr[0])
+        # #print(type(arr[0]))
+        # Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
+        # #print(arr)
         
+        h0_0_5 = np.array([
+            [np.cos(t0), 0, np.sin(t0), 0],
+            [np.sin(t0), 0, -np.cos(t0), 0],
+            [0, 1, 0, self.l1],
+            [0, 0, 0, 1]
+        ])
 
+        h0_5_1 = np.array([
+            [0, -1, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
 
+        h1_2 = np.array([
+            [np.cos(t1), np.sin(t1), 0, self.l2 * np.cos(t1)],
+            [np.sin(t1), -np.cos(t1), 0, self.l2 * np.sin(t1)],
+            [0, 0, -1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        h2_3 = np.array([
+            [np.cos(t2), np.sin(t2), 0, self.l3 * np.cos(t2)],
+            [np.sin(t2), -np.cos(t2), 0, self.l3 * np.sin(t2)],
+            [0, 0, -1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        h3_3_5 = np.array([
+            [np.cos(t3), -np.sin(t3), 0, self.l4 * np.cos(t3)],
+            [np.sin(t3), np.cos(t3), 0, self.l4 * np.cos(t3)],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        h3_5_4 = np.array([
+            [0, 0, 1, 0],
+            [-1, 0, 0, 0],
+            [0, -1, 0, 0],
+            [0, 0, 0, 1]
+        ])
+
+        h4_5 = np.array([
+            [np.cos(t4), -np.sin(t4), 0, 0],
+            [np.sin(t4), np.cos(t4), 0, 0],
+            [0, 0, 1, self.l5],
+            [0, 0, 0, 1]
+        ])
+        h0_1 = h0_0_5 @ h0_5_1
+        h3_4 = h3_3_5 @ h3_5_4
+
+        kHat = np.array([0, 0, 1])
+
+        print("rotation", np.shape(h0_1[:3, :3]), "khat", np.shape(kHat))
+        print("z", np.shape(h0_1[:3, :3] @ kHat), "r", np.shape(h0_1[:3, 3].reshape(3, 1)))
+
+        j1 = np.cross((h0_1[:3, :3] @ kHat).flatten(), h0_1[:3, 3])
+        j2 = np.cross((h1_2[:3, :3] @ kHat).flatten(), h1_2[:3, 3])
+        j3 = np.cross((h2_3[:3, :3] @ kHat).flatten(), h2_3[:3, 3])
+        j4 = np.cross((h3_4[:3, :3] @ kHat).flatten(), h3_4[:3, 3])
+        j5 = np.cross((h4_5[:3, :3] @ kHat).flatten(), h4_5[:3, 3])
+        #Hm = h0_0_5 * h0_5_1 * h1_2 * h2_3 * h3_3_5 * h3_5_4 * h4_5
+        jacobian = np.column_stack((j1, j2, j3, j4, j5))
         #Hm = m01j * m12j * m23j * m34j * m45j * m56j
         #print(Hm)
-        Hx = Hm[0, 3]
-        Hy = Hm[1 , 3]
-        Hz = Hm[2 , 3]
-
-        # [row, column]
     
-        jacobian = sp.Matrix([[sp.diff(Hx, t0), sp.diff(Hx, t1), sp.diff(Hx, t2),sp.diff(Hx, t3), sp.diff(Hx, t4)],
-                           [sp.diff(Hy, t0), sp.diff(Hy, t1), sp.diff(Hy, t2),sp.diff(Hy, t3), sp.diff(Hy, t4)],
-                           [sp.diff(Hz, t0), sp.diff(Hz, t1), sp.diff(Hz, t2),sp.diff(Hz, t3), sp.diff(Hz, t4)],
-                           ])
 
+        # [row, column
 
-        # This will not work because of variable names
-        # print(self.joint_values)
-        jacobian = jacobian.evalf(subs={t0: sp.rad(self.joint_values[0])})
-        jacobian =  jacobian.evalf(subs={t1: sp.rad(self.joint_values[1])})
-        jacobian =  jacobian.evalf(subs={t2: sp.rad(self.joint_values[2])})
-        jacobian =  jacobian.evalf(subs={t3: sp.rad(self.joint_values[3])})
-        jacobian =  jacobian.evalf(subs={t4: sp.rad(self.joint_values[4])})
-
-        #print("Jacobian", jacobian)
-        #print()
-
-        invJac =  np.array(sp.transpose(jacobian) * (( (jacobian * sp.transpose(jacobian)) + sp.eye(3)*.0001) **-1 ))
+        invJac =  np.array(np.transpose(jacobian) @ (np.linalg.inv( (jacobian @ np.transpose(jacobian)) + np.eye(3)*.0001) ))
        # print( jacobian * sp.transpose(jacobian)* sp.eye(3)*1.0001) 
         #print("hi", invJac)
         npVel = np.array([vel])
@@ -186,9 +226,9 @@ class HiwonderRobot:
         print(f'[DEBUG] thetadot (deg/s) = {thetaDot=}')
 
         # Update joint angles
-        dt = 0.2 # Fixed time step
+        dt = 0.1 # Fixed time step
         K_ind = 200 # mapping gain for individual joint control
-        #K_tot = 1
+        #K_tot = 10
         new_thetalist = [0.0]*6
 
         # linear velocity control
