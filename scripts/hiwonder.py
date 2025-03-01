@@ -112,23 +112,6 @@ class HiwonderRobot:
         # insert your code for finding "thetalist_dot" (FVK)
         
         t0, t1, t2, t3, t4, t5 = np.radians(self.joint_values)
-
-        # arr = []
-        # dhTable = [[t0, self.l1, 0, math.pi/2],
-        #            [math.pi/2, 0, 0, 0],
-        #            [t1, 0, self.l2, math.pi],
-        #            [t2, 0, self.l3, math.pi], 
-        #            [t3, 0, self.l4, 0],
-        #            [-math.pi/2, 0, 0, -math.pi/2],
-        #            [t4, self.l5, 0, 0]]
-        
-        # for i in range(len(dhTable)):
-        #     arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
-        
-        # #print(arr[0])
-        # #print(type(arr[0]))
-        # Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
-        # #print(arr)
         
         h0_0_5 = np.array([
             [np.cos(t0), 0, np.sin(t0), 0],
@@ -191,11 +174,16 @@ class HiwonderRobot:
         print("rotation", np.shape(h0_1[:3, :3]), "khat", np.shape(kHat))
         print("z", np.shape(h0_1[:3, :3] @ kHat), "r", np.shape(h0_1[:3, 3].reshape(3, 1)))
 
+        h0_2 = h0_1 @ h1_2
+        h0_3 = h0_2 @ h2_3
+        h0_4 = h0_3 @ h3_4
+        h0_5 = h0_4 @ h4_5
+        
         j1 = np.cross((h0_1[:3, :3] @ kHat).flatten(), h0_1[:3, 3])
-        j2 = np.cross((h1_2[:3, :3] @ kHat).flatten(), h1_2[:3, 3])
-        j3 = np.cross((h2_3[:3, :3] @ kHat).flatten(), h2_3[:3, 3])
-        j4 = np.cross((h3_4[:3, :3] @ kHat).flatten(), h3_4[:3, 3])
-        j5 = np.cross((h4_5[:3, :3] @ kHat).flatten(), h4_5[:3, 3])
+        j2 = np.cross((h0_2[:3, :3] @ kHat).flatten(), h0_2[:3, 3])
+        j3 = np.cross((h0_3[:3, :3] @ kHat).flatten(), h0_3[:3, 3])
+        j4 = np.cross((h0_4[:3, :3] @ kHat).flatten(), h0_4[:3, 3])
+        j5 = np.cross((h0_5[:3, :3] @ kHat).flatten(), h0_5[:3, 3])
 
         # makes it a 3x5 matrix 
         jacobian = np.column_stack((j1, j2, j3, j4, j5))
