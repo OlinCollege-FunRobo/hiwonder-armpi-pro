@@ -222,13 +222,13 @@ class HiwonderRobot:
 
         # Update joint angles
         dt = 0.1 # Fixed time step
-        K_ind = 200 # mapping gain for individual joint control
+        K_ind = 20 # mapping gain for individual joint control
         #K_tot = 10
         new_thetalist = [0.0]*6
 
         # linear velocity control
         for i in range(5):
-            new_thetalist[i] = self.joint_values[i] + dt * np.rad2deg(float((thetaDot[i][0]))) # thetalist_dot[i]
+            new_thetalist[i] = self.joint_values[i] + dt * 0.1 * np.rad2deg(float((thetaDot[i][0]))) # thetalist_dot[i]
        
         # individual joint control
         new_thetalist[0] += dt * K_ind * cmd.arm_j1
