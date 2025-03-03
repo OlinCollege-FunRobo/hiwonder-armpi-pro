@@ -28,9 +28,6 @@ class HiwonderRobot:
 
         # in meters
         self.l1, self.l2, self.l3, self.l4, self.l5 = 0.155, 0.099, 0.095, 0.055, 0.105
-        
-        # should be radians
-        # self.theta = [0, 0, 0, 0, 0]
 
         self.jacobian = self.make_jacobian()
         self.joint_values = [0, 0, 90, -30, 0, 0]  # degrees
@@ -40,15 +37,8 @@ class HiwonderRobot:
              [-120, 120], [-90, 90], [-120, 120],
              [-100, 100], [-90, 90], [-120, 30]
         ]
-        # self.theta_limits = [
-        #     [-np.pi, np.pi], 
-        #     [-np.pi/3, np.pi], 
-        #     [-np.pi+np.pi/12, np.pi-np.pi/4], 
-        #     [-np.pi+np.pi/12, np.pi-np.pi/12], 
-        #     [-np.pi, np.pi]
-        # ]
+    
         self.joint_control_delay = 0.2 # secs
-        self.speed_control_delay = 0.2
 
         self.move_to_home_position()
 
@@ -71,24 +61,19 @@ class HiwonderRobot:
         for i in range(len(dhTable)):
             arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
         
-        #print(arr[0])
-        #print(type(arr[0]))
-        Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
-        #print(arr)
+        # matrix multiplies all elements in dh table to get position and rotation of end effector
+        Hm = arr[0] * arr[1] * arr[2] * arr[3] * arr[4] * arr[5] * arr[6]
 
-        #Hm = m01j * m12j * m23j * m34j * m45j * m56j
-        #print(Hm)
+        # grab end effector vector position
         Hx = Hm[0, 3]
         Hy = Hm[1 , 3]
         Hz = Hm[2 , 3]
 
-        # [row, column]
-    
+        # calculating partial derivatives for all joints    
         jacobian = sp.Matrix([[sp.diff(Hx, t0), sp.diff(Hx, t1), sp.diff(Hx, t2),sp.diff(Hx, t3), sp.diff(Hx, t4)],
                            [sp.diff(Hy, t0), sp.diff(Hy, t1), sp.diff(Hy, t2),sp.diff(Hy, t3), sp.diff(Hy, t4)],
                            [sp.diff(Hz, t0), sp.diff(Hz, t1), sp.diff(Hz, t2),sp.diff(Hz, t3), sp.diff(Hz, t4)],
                            ])
-        print("jacobian made")
         return jacobian
 
     def set_robot_commands(self, cmd: ut.GamepadCmds):
@@ -146,43 +131,37 @@ class HiwonderRobot:
         """
         vel = [cmd.arm_vx, cmd.arm_vy, cmd.arm_vz]
         ######################################################################
-        # insert your code for finding "thetalist_dot" (FVK)
+        # Symbolic variables for theta values
         t0, t1, t2, t3, t4  = sp.symbols('t0 t1 t2 t3 t4 ')
 
-        # print(self.joint_values)
+        # evaluate all 5 joint values with current theta values
         self.jacobian = self.jacobian.evalf(subs={t0: sp.rad(self.joint_values[0])})
         self.jacobian =  self.jacobian.evalf(subs={t1: sp.rad(self.joint_values[1])})
         self.jacobian =  self.jacobian.evalf(subs={t2: sp.rad(self.joint_values[2])})
         self.jacobian =  self.jacobian.evalf(subs={t3: sp.rad(self.joint_values[3])})
         self.jacobian =  self.jacobian.evalf(subs={t4: sp.rad(self.joint_values[4])})
 
-        #print("Jacobian", jacobian)
-        #print()
-
+        # Calculates the psuedo jacobian to inverse it 
         invJac =  np.array(sp.transpose(self.jacobian) * (( (self.jacobian * sp.transpose(self.jacobian)) + sp.eye(3)*.0001) **-1 ))
-       # print( jacobian * sp.transpose(jacobian)* sp.eye(3)*1.0001) 
-        #print("hi", invJac)
+        # Converts to np array so we can matmul
         npVel = np.array([vel])
-
+        
+        # Set a maximum velocity, so the robot will not move too fast
         max_vel = 2
 
         for i in range(3):
+            # set max velocity limit
             if npVel[0][i]> max_vel:
                 npVel[0][i] = max_vel
             elif npVel[0][i] < -max_vel:
                 npVel[0][i] = -max_vel
+            # Lots of drift on the controller, so only if the joystick is fully moved to one side will the robot move
             elif npVel[0][i] < 2:
                 npVel[0][i] = 0
                 
-
-
-        #print("shape of vel", np.shape(npVel))
-        #print("shape of invJac",  np.shape(invJac))
-        #print(invJac)
+        # finds the values of theta to make the robot move to
         thetaDot = np.matmul(invJac, np.transpose(npVel))
-        #print("thetadot shape", np.shape(thetaDot))
 
-        # print(cmd.arm_j1)
         ######################################################################
 
 
@@ -193,7 +172,6 @@ class HiwonderRobot:
         # Update joint angles
         dt = 0.3 # Fixed time step
         K_ind = 2 # mapping gain for individual joint control
-        #K_tot = 10
         new_thetalist = [0.0]*6
 
         # linear velocity control
