@@ -32,7 +32,7 @@ class HiwonderRobot:
         # should be radians
         # self.theta = [0, 0, 0, 0, 0]
 
-        
+        self.jacobian = self.make_jacobian()
         self.joint_values = [0, 0, 90, -30, 0, 0]  # degrees
         self.home_position = [0, 0, 90, -30, 0, 0]  # degrees
         
@@ -55,6 +55,41 @@ class HiwonderRobot:
     # -------------------------------------------------------------
     # Methods for interfacing with the mobile base
     # -------------------------------------------------------------
+    def make_jacobian(self):
+        
+        t0, t1, t2, t3, t4  = sp.symbols('t0 t1 t2 t3 t4 ')
+
+        arr = []
+        dhTable = [[t0, self.l1, 0, math.pi/2],
+                   [math.pi/2, 0, 0, 0],
+                   [t1, 0, self.l2, math.pi],
+                   [t2, 0, self.l3, math.pi], 
+                   [t3, 0, self.l4, 0],
+                   [-math.pi/2, 0, 0, -math.pi/2],
+                   [t4, self.l5, 0, 0]]
+        
+        for i in range(len(dhTable)):
+            arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
+        
+        #print(arr[0])
+        #print(type(arr[0]))
+        Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
+        #print(arr)
+
+        #Hm = m01j * m12j * m23j * m34j * m45j * m56j
+        #print(Hm)
+        Hx = Hm[0, 3]
+        Hy = Hm[1 , 3]
+        Hz = Hm[2 , 3]
+
+        # [row, column]
+    
+        jacobian = sp.Matrix([[sp.diff(Hx, t0), sp.diff(Hx, t1), sp.diff(Hx, t2),sp.diff(Hx, t3), sp.diff(Hx, t4)],
+                           [sp.diff(Hy, t0), sp.diff(Hy, t1), sp.diff(Hy, t2),sp.diff(Hy, t3), sp.diff(Hy, t4)],
+                           [sp.diff(Hz, t0), sp.diff(Hz, t1), sp.diff(Hz, t2),sp.diff(Hz, t3), sp.diff(Hz, t4)],
+                           ])
+        print("jacobian made")
+        return jacobian
 
     def set_robot_commands(self, cmd: ut.GamepadCmds):
         """Updates robot base and arm based on gamepad commands.
@@ -112,89 +147,19 @@ class HiwonderRobot:
         vel = [cmd.arm_vx, cmd.arm_vy, cmd.arm_vz]
         ######################################################################
         # insert your code for finding "thetalist_dot" (FVK)
-        
         t0, t1, t2, t3, t4  = sp.symbols('t0 t1 t2 t3 t4 ')
 
-        # arr = []
-        # dhTable = [[t0, self.l1, 0, math.pi/2],
-        #            [math.pi/2, 0, 0, 0],
-        #            [t1, 0, self.l2, math.pi],
-        #            [t2, 0, self.l3, math.pi], 
-        #            [t3, 0, self.l4, 0],
-        #            [-math.pi/2, 0, 0, -math.pi/2],
-        #            [t4, self.l5, 0, 0]]
-        
-        # for i in range(len(dhTable)):
-        #     arr.append(ut.dh_sympi_to_matrix(dhTable[i]))
-        
-        # #print(arr[0])
-        # #print(type(arr[0]))
-        # Hm = (arr[0] * (arr[1] * (arr[2] * (arr[3] * (arr[4] * (arr[5] * arr[6]))))))
-        # #print(arr)
-        
-        h0_0_5 = sp.Matrix([[sp.cos(t0), 0, sp.sin(t0), 0],
-               [sp.sin(t0), 0, -sp.cos(t0), 0],
-               [0, 1, 0, self.l1],
-               [0, 0, 0, 1]])
-        
-        h0_5_1 = sp.Matrix([[0, -1, 0, 0],
-               [1, 0, 0, 0],
-               [0, 0, 1, 0],
-               [0, 0, 0, 1]])
-        
-        h1_2 = sp.Matrix([[sp.cos(t1), sp.sin(t1), 0, self.l2*sp.cos(t1)],
-                [sp.sin(t1), -sp.cos(t1), 0, self.l2*sp.sin(t1)],
-                [0, 0, -1, 0],
-                [0, 0, 0, 1]])
-        
-        h2_3 = sp.Matrix([[sp.cos(t2), sp.sin(t2), 0, self.l3*sp.cos(t2)],
-                [sp.sin(t2), -sp.cos(t2), 0, self.l3*sp.sin(t2)],
-                [0, 0, -1, 0],
-                [0, 0, 0, 1]])
-        
-        h3_3_5 = sp.Matrix([[sp.cos(t3),-sp.sin(t3),0,self.l4*sp.cos(t3)],
-            [sp.sin(t3),sp.cos(t3),0,self.l4*sp.cos(t3),],
-            [0,0,1,0],
-            [0,0,0,1]])
-        
-        h3_5_4 = sp.Matrix([[0,0,1,0],
-            [-1,0,0,0],
-            [0,-1,0,0],
-            [0,0,0,1]])
-        
-        h4_5 = sp.Matrix([[sp.cos(t4),-sp.sin(t4),0,0],
-            [sp.sin(t4),sp.cos(t4),0,0],
-            [0,0,1,self.l5],
-            [0,0,0,1]])
-        
-        Hm = h0_0_5 * h0_5_1 * h1_2 * h2_3 * h3_3_5 * h3_5_4 * h4_5
-
-        #Hm = m01j * m12j * m23j * m34j * m45j * m56j
-        #print(Hm)
-        Hx = Hm[0, 3]
-        Hy = Hm[1 , 3]
-        Hz = Hm[2 , 3]
-
-        # [row, column]
-    
-        jacobian = sp.Matrix([[sp.diff(Hx, t0), sp.diff(Hx, t1), sp.diff(Hx, t2),sp.diff(Hx, t3), sp.diff(Hx, t4)],
-                           [sp.diff(Hy, t0), sp.diff(Hy, t1), sp.diff(Hy, t2),sp.diff(Hy, t3), sp.diff(Hy, t4)],
-                           [sp.diff(Hz, t0), sp.diff(Hz, t1), sp.diff(Hz, t2),sp.diff(Hz, t3), sp.diff(Hz, t4)],
-                           ])
-
-
-        # This will not work because of variable names
         # print(self.joint_values)
-        jacobian = jacobian.evalf(subs={t0: sp.rad(self.joint_values[0])})
-        jacobian =  jacobian.evalf(subs={t1: sp.rad(self.joint_values[1])})
-        jacobian =  jacobian.evalf(subs={t2: sp.rad(self.joint_values[2])})
-        jacobian =  jacobian.evalf(subs={t3: sp.rad(self.joint_values[3])})
-        jacobian =  jacobian.evalf(subs={t4: sp.rad(self.joint_values[4])})
+        self.jacobian = self.jacobian.evalf(subs={t0: sp.rad(self.joint_values[0])})
+        self.jacobian =  self.jacobian.evalf(subs={t1: sp.rad(self.joint_values[1])})
+        self.jacobian =  self.jacobian.evalf(subs={t2: sp.rad(self.joint_values[2])})
+        self.jacobian =  self.jacobian.evalf(subs={t3: sp.rad(self.joint_values[3])})
+        self.jacobian =  self.jacobian.evalf(subs={t4: sp.rad(self.joint_values[4])})
 
         #print("Jacobian", jacobian)
         #print()
 
-        invJac =  np.array(sp.transpose(jacobian) * (( (jacobian * sp.transpose(jacobian)) + sp.eye(3)*.0001) **-1 ))
+        invJac =  np.array(sp.transpose(self.jacobian) * (( (self.jacobian * sp.transpose(self.jacobian)) + sp.eye(3)*.0001) **-1 ))
        # print( jacobian * sp.transpose(jacobian)* sp.eye(3)*1.0001) 
         #print("hi", invJac)
         npVel = np.array([vel])
@@ -206,6 +171,11 @@ class HiwonderRobot:
                 npVel[0][i] = max_vel
             elif npVel[0][i] < -max_vel:
                 npVel[0][i] = -max_vel
+            elif npVel[0][i] < 2:
+                npVel[0][i] = 0
+                
+
+
         #print("shape of vel", np.shape(npVel))
         #print("shape of invJac",  np.shape(invJac))
         #print(invJac)
@@ -221,14 +191,14 @@ class HiwonderRobot:
         print(f'[DEBUG] thetadot (deg/s) = {thetaDot=}')
 
         # Update joint angles
-        dt = 0.1 # Fixed time step
-        K_ind = 20 # mapping gain for individual joint control
+        dt = 0.3 # Fixed time step
+        K_ind = 2 # mapping gain for individual joint control
         #K_tot = 10
         new_thetalist = [0.0]*6
 
         # linear velocity control
         for i in range(5):
-            new_thetalist[i] = self.joint_values[i] + dt * 0.1 * np.rad2deg(float((thetaDot[i][0]))) # thetalist_dot[i]
+            new_thetalist[i] = self.joint_values[i] + dt * 0.05 * np.rad2deg(float((thetaDot[i][0]))) # thetalist_dot[i]
        
         # individual joint control
         new_thetalist[0] += dt * K_ind * cmd.arm_j1
@@ -260,7 +230,7 @@ class HiwonderRobot:
         self.servo_bus.move_servo(joint_id, pulse, duration)
         
         print(f"[DEBUG] Moving joint {joint_id} to {theta}° ({pulse} pulse)")
-        time.sleep(self.joint_control_delay)
+        #time.sleep(self.joint_control_delay)
 
 
     def set_joint_values(self, thetalist: list, duration=250, radians=False):
