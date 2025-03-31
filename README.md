@@ -1,3 +1,16 @@
+#### Mika, Felix, & Xavier
+## We have a functional robot with singular joint and multijoint movement implemented using FPK. 
+### Important Notes & Takeaways:
+* We solved for the jacobian matrix symbolically by using Sympy, but we probably should have done it generalized using the cross product. We ran into a lot of bugs doing it symbolically with issues of switching between np and sp matrices.
+* We solved for the jacobian once and then just plugged in the numbers of the symbolic jacobian, so it was more efficient.
+* There is a lot of drift on the controller, so we only take inputs that are of maximum velocities (when the joystick is fully pressed to the edge)
+* Remember whether you are in degrees or radians
+* Lowered the gain of the robot, so it doesn't move like crazy
+
+
+
+
+
 # Python Library for the Hiwonder 5-DOF Mobile Manipulator
 
 This repository provides the python libraries for interfacing with the Hiwonder 5-DOF mobile manipulator. The robot platform has an onboard **Raspberry Pi 4B** which serves as the main compute unit of the system. The 5-DOF arm are driven by serial bus servos controlled over serial while the mobile base is driven by DC motors controlled by a custom driver board with communication over I2C.

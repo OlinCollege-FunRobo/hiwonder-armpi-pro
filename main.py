@@ -71,6 +71,8 @@ def main():
                 
                 robot.set_robot_commands(latest_cmd)
 
+                print(f'{latest_cmd.arm_vx}, {latest_cmd.arm_vy}, {latest_cmd.arm_vz}')
+
             elapsed = time.time() - cycle_start
             remaining_time = control_interval - elapsed
             if remaining_time > 0:
