@@ -7,9 +7,11 @@ Handles the control of the mobile base and 5-DOF robotic arm using commands rece
 
 import time
 import numpy as np
+from numpy import round
 from board_controller import BoardController
 from servo_bus_controller import ServoBusController
 import utils as ut
+
 
 # Robot base constants
 WHEEL_RADIUS = 0.047  # meters
@@ -22,12 +24,27 @@ class HiwonderRobot:
         self.board = BoardController()
         self.servo_bus = ServoBusController()
 
+        # in meters
+        self.l1, self.l2, self.l3, self.l4, self.l5 = 0.155, 0.099, 0.095, 0.055, 0.105
+        
+        # should be radians
+        # self.theta = [0, 0, 0, 0, 0]
+
+        
         self.joint_values = [0, 0, 90, -30, 0, 0]  # degrees
         self.home_position = [0, 0, 90, -30, 0, 0]  # degrees
+        
         self.joint_limits = [
-            [-120, 120], [-90, 90], [-120, 120],
-            [-100, 100], [-90, 90], [-120, 30]
+             [-120, 120], [-90, 90], [-120, 120],
+             [-100, 100], [-90, 90], [-120, 30]
         ]
+        # self.theta_limits = [
+        #     [-np.pi, np.pi], 
+        #     [-np.pi/3, np.pi], 
+        #     [-np.pi+np.pi/12, np.pi-np.pi/4], 
+        #     [-np.pi+np.pi/12, np.pi-np.pi/12], 
+        #     [-np.pi, np.pi]
+        # ]
         self.joint_control_delay = 0.2 # secs
         self.speed_control_delay = 0.2
 
@@ -61,7 +78,7 @@ class HiwonderRobot:
         print(f'[DEBUG] XYZ position: X: {round(position[0], 3)}, Y: {round(position[1], 3)}, Z: {round(position[2], 3)} \n')
 
 
-    def set_base_velocity(self, cmd: ut.GamepadCmds):
+    def set_base_velocity(self, cmd: ut.GamepadCmds): # Driving the robot, N/A
         """ Computes wheel speeds based on joystick input and sends them to the board """
         """
         motor3 w0|  ↑  |w1 motor1
@@ -91,34 +108,130 @@ class HiwonderRobot:
             cmd (GamepadCmds): Contains linear velocities for the arm.
         """
         vel = [cmd.arm_vx, cmd.arm_vy, cmd.arm_vz]
-
         ######################################################################
-        # insert your code for finding "thetalist_dot"
+        # insert your code for finding "thetalist_dot" (FVK)
+        
+        t0, t1, t2, t3, t4, t5 = np.radians(self.joint_values)
+        
+        h0_0_5 = np.array([
+            [np.cos(t0), 0, np.sin(t0), 0],
+            [np.sin(t0), 0, -np.cos(t0), 0],
+            [0, 1, 0, self.l1],
+            [0, 0, 0, 1]
+        ])
 
-        thetalist_dot = [0]*5
+        h0_5_1 = np.array([
+            [0, -1, 0, 0],
+            [1, 0, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
 
+        h1_2 = np.array([
+            [np.cos(t1), np.sin(t1), 0, self.l2 * np.cos(t1)],
+            [np.sin(t1), -np.cos(t1), 0, self.l2 * np.sin(t1)],
+            [0, 0, -1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        h2_3 = np.array([
+            [np.cos(t2), np.sin(t2), 0, self.l3 * np.cos(t2)],
+            [np.sin(t2), -np.cos(t2), 0, self.l3 * np.sin(t2)],
+            [0, 0, -1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        h3_3_5 = np.array([
+            [np.cos(t3), -np.sin(t3), 0, self.l4 * np.cos(t3)],
+            [np.sin(t3), np.cos(t3), 0, self.l4 * np.cos(t3)],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1]
+        ])
+
+        h3_5_4 = np.array([
+            [0, 0, 1, 0],
+            [-1, 0, 0, 0],
+            [0, -1, 0, 0],
+            [0, 0, 0, 1]
+        ])
+
+        h4_5 = np.array([
+            [np.cos(t4), -np.sin(t4), 0, 0],
+            [np.sin(t4), np.cos(t4), 0, 0],
+            [0, 0, 1, self.l5],
+            [0, 0, 0, 1]
+        ])
+        h0_1 = h0_0_5 @ h0_5_1
+        h3_4 = h3_3_5 @ h3_5_4
+
+        kHat = np.array([0, 0, 1])
+
+        print(np.shape(h2_3))
+        print(h2_3)
+        print(h2_3[:3, :3])
+        print(h2_3[:3, 3])
+
+        print("rotation", np.shape(h0_1[:3, :3]), "khat", np.shape(kHat))
+        print("z", np.shape(h0_1[:3, :3] @ kHat), "r", np.shape(h0_1[:3, 3].reshape(3, 1)))
+
+        h0_2 = h0_1 @ h1_2
+        h0_3 = h0_2 @ h2_3
+        h0_4 = h0_3 @ h3_4
+        h0_5 = h0_4 @ h4_5
+        
+        j1 = np.cross((h0_1[:3, :3] @ kHat).flatten(), h0_1[:3, 3])
+        j2 = np.cross((h0_2[:3, :3] @ kHat).flatten(), h0_2[:3, 3])
+        j3 = np.cross((h0_3[:3, :3] @ kHat).flatten(), h0_3[:3, 3])
+        j4 = np.cross((h0_4[:3, :3] @ kHat).flatten(), h0_4[:3, 3])
+        j5 = np.cross((h0_5[:3, :3] @ kHat).flatten(), h0_5[:3, 3])
+
+        # makes it a 3x5 matrix 
+        jacobian = np.column_stack((j1, j2, j3, j4, j5))
+        #print(Hm)
+    
+        invJac =  np.array(np.transpose(jacobian) @ (np.linalg.inv( (jacobian @ np.transpose(jacobian)) + np.eye(3)*.0001) ))
+       # print( jacobian * sp.transpose(jacobian)* sp.eye(3)*1.0001) 
+        #print("hi", invJac)
+        npVel = np.array([vel])
+
+        max_vel = 2
+
+        for i in range(3):
+            if npVel[0][i]> max_vel:
+                npVel[0][i] = max_vel
+            elif npVel[0][i] < -max_vel:
+                npVel[0][i] = -max_vel
+        #print("shape of vel", np.shape(npVel))
+        #print("shape of invJac",  np.shape(invJac))
+        #print(invJac)
+        thetaDot = np.matmul(invJac, np.transpose(npVel))
+        #print("thetadot shape", np.shape(thetaDot))
+
+        # print(cmd.arm_j1)
         ######################################################################
 
 
         print(f'[DEBUG] Current thetalist (deg) = {self.joint_values}') 
-        print(f'[DEBUG] linear vel: {[round(vel[0], 3), round(vel[1], 3), round(vel[2], 3)]}')
-        print(f'[DEBUG] thetadot (deg/s) = {[round(td,2) for td in thetalist_dot]}')
+        print(f'[DEBUG] linear vel: {npVel=}')
+        print(f'[DEBUG] thetadot (deg/s) = {thetaDot=}')
 
         # Update joint angles
-        dt = 0.5 # Fixed time step
-        K = 1600 # mapping gain for individual joint control
+        dt = 0.1 # Fixed time step
+        K_ind = 200 # mapping gain for individual joint control
+        #K_tot = 10
         new_thetalist = [0.0]*6
 
         # linear velocity control
         for i in range(5):
-            new_thetalist[i] = self.joint_values[i] + dt * thetalist_dot[i]
+            new_thetalist[i] = self.joint_values[i] + dt * np.rad2deg(float((thetaDot[i][0]))) # thetalist_dot[i]
+       
         # individual joint control
-        new_thetalist[0] += dt * K * cmd.arm_j1
-        new_thetalist[1] += dt * K * cmd.arm_j2
-        new_thetalist[2] += dt * K * cmd.arm_j3
-        new_thetalist[3] += dt * K * cmd.arm_j4
-        new_thetalist[4] += dt * K * cmd.arm_j5
-        new_thetalist[5] = self.joint_values[5] + dt * K * cmd.arm_ee
+        new_thetalist[0] += dt * K_ind * cmd.arm_j1
+        new_thetalist[1] += dt * K_ind * cmd.arm_j2
+        new_thetalist[2] += dt * K_ind * cmd.arm_j3
+        new_thetalist[3] += dt * K_ind * cmd.arm_j4
+        new_thetalist[4] += dt * K_ind * cmd.arm_j5
+        new_thetalist[5] = self.joint_values[5] + dt * K_ind * cmd.arm_ee
 
         new_thetalist = [round(theta,2) for theta in new_thetalist]
         print(f'[DEBUG] Commanded thetalist (deg) = {new_thetalist}')       

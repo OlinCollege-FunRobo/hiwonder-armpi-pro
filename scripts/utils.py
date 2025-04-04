@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import math, numpy as np
 from math import sqrt, sin, cos, atan, atan2
 from functools import singledispatch
+import sympy as sp
 
 PI = 3.1415926535897932384
 
@@ -144,6 +145,23 @@ def dh_to_matrix(dh_params: list) -> np.ndarray:
     return np.array([
         [cos(theta), -sin(theta) * cos(alpha), sin(theta) * sin(alpha), a * cos(theta)],
         [sin(theta), cos(theta) * cos(alpha), -cos(theta) * sin(alpha), a * sin(theta)],
+        [0, sin(alpha), cos(alpha), d],
+        [0, 0, 0, 1]
+    ])
+
+def dh_sympi_to_matrix(dh_params: list):
+    """Converts Denavit-Hartenberg parameters to a transformation matrix.
+
+    Args:
+        dh_params (list): Denavit-Hartenberg parameters [theta, d, a, alpha].
+
+    Returns:
+        np.ndarray: A 4x4 transformation matrix.
+    """
+    theta, d, a, alpha = dh_params
+    return sp.Matrix([
+        [sp.cos(theta), -sp.sin(theta) * cos(alpha), sp.sin(theta) * sin(alpha), a * sp.cos(theta)],
+        [sp.sin(theta), sp.cos(theta) * cos(alpha), -sp.cos(theta) * sin(alpha), a * sp.sin(theta)],
         [0, sin(alpha), cos(alpha), d],
         [0, 0, 0, 1]
     ])
