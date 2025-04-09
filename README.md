@@ -1,9 +1,10 @@
-# Python Library for the Hiwonder 5-DOF Mobile Manipulator
+# Python Library for the Hiwonder 5-DOF Mobile Manipulator (v2024)
 
 This repository provides the python libraries for interfacing with the Hiwonder 5-DOF mobile manipulator. The robot platform has an onboard **Raspberry Pi 4B** which serves as the main compute unit of the system. The 5-DOF arm are driven by serial bus servos controlled over serial while the mobile base is driven by DC motors controlled by a custom driver board with communication over I2C.
 
 Your project development will be done onboard the Raspberry Pi ideally over **SSH protocol**.
 
+NOTE: This branch is to be used with the version of the robot that's using the **RasAdapter V3.6 expansion board**.
 
 <img src = "media/hiwonder.png" width="" height="400">
 
