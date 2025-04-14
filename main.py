@@ -40,14 +40,14 @@ def shutdown_robot():
     print("\n[INFO] Shutting down the robot safely...")
 
     # Stop motors and reset servos to a safe position
-    robot.stop_motors()
+    # robot.stop_motors()
     robot.set_joint_values(robot.home_position, duration=600)
     time.sleep(1.5)  # Allow time for servos to reposition
 
     # Close communication interfaces
     print("[INFO] Closing hardware interfaces...")
-    robot.board.close()
-    robot.servo_bus.close()
+    # robot.board.close()
+    # robot.servo_bus.close()
 
     print("[INFO] Shutdown complete. Safe to power off.")
 
@@ -68,8 +68,8 @@ def main():
                 latest_cmd = cmdlist[-1]
                 # accessing the utility button, LB, on the gamepad (uncomment code below to use)
                 # print(f'Utility Button is [ {latest_cmd.utility_btn} ]')
-                
-                robot.set_robot_commands(latest_cmd)
+            #latest_cmd = utils.GamepadCmds()
+            robot.set_robot_commands(latest_cmd)
 
             elapsed = time.time() - cycle_start
             remaining_time = control_interval - elapsed

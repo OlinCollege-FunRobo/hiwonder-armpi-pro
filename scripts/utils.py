@@ -1,12 +1,12 @@
 from typing import List
-from dataclasses import dataclass, field
+#from dataclasses import dataclass, field
 import math, numpy as np
 from math import sqrt, sin, cos, atan, atan2
 from functools import singledispatch
 
 PI = 3.1415926535897932384
 
-@dataclass
+#@dataclass
 class State:
     """This dataclass represents the system state (pos and vel) """
     x: float = 0.0
@@ -17,7 +17,7 @@ class State:
     theta_dot: float = 0.0
 
 
-@dataclass
+#@dataclass
 class Controls:
     """This dataclass represents the system controls """
     v: float = 0.0
@@ -26,7 +26,7 @@ class Controls:
     vy: float = 0.0
 
 
-@dataclass
+#@dataclass
 class GamepadCmds:
     """This dataclass represents the gamepad commands """
     base_vx: int = 0
@@ -50,7 +50,7 @@ def print_dataclass(obj):
         print(f"{field}: {round(getattr(obj, field), 3)}")
     print("------------------------------------ \n")
 
-
+#@dataclass
 class EndEffector:
     x: float = 0.0
     y: float = 0.0
@@ -68,65 +68,40 @@ def rotm_to_euler(R) -> tuple:
 
     Returns:
         tuple: Roll, pitch, and yaw angles (in radians).
-    
-    Reference:
-        Based on the method described at:
-        https://motion.cs.illinois.edu/software/klampt/latest/pyklampt_docs/_modules/klampt/math/so3.html
+
     """
-    r31 = R[2,0] # -sin(p)
-    r11 = R[0,0] # cos(r)*cos(p)
-    r33 = R[2,2] # cos(p)*cos(y)
-    r12 = R[0,1] # -sin(r)*cos(y) + cos(r)*sin(p)*sin(y)
-
-    # compute pitch
-        # condition r31 to the range of asin [-1, 1]
-    r31 = min(1.0, max(r31, -1.0))
-    p = -math.asin(r31)
-    cosp = math.cos(p)
-
-    if abs(cosp) > 1e-7:
-        cosr = r11 / cosp
-        # condition cosr to the range of acos [-1, 1]
-        cosr = min(1.0, max(cosr, -1.0))
-        r = math.acos(cosr)
-
-        cosy = r33 / cosp
-        # condition cosy to the range of acos [-1, 1]
-        cosy = min(1.0, max(cosy, -1.0))
-        y = math.acos(cosy)
-    
-    else:
-        # pitch (p) is close to 90 deg, i.e. cos(p) = 0.0
-        # there are an infinitely many solutions, so we set y = 0
-        y = 0
-        # r12: -sin(r)*cos(y) + cos(r)*sin(p)*sin(y) -> -sin(r)
-            # condition r12 to the range of asin [-1, 1]
-        r12 = min(1.0, max(r12, -1.0))
-        r = -math.asin(r12)
-    
     
     r11 = R[0,0] if abs(R[0,0]) > 1e-7 else 0.0
+    r12 = R[0,1] if abs(R[0,1]) > 1e-7 else 0.0
     r21 = R[1,0] if abs(R[1,0]) > 1e-7 else 0.0
+    r22 = R[1,1] if abs(R[1,1]) > 1e-7 else 0.0
     r32 = R[2,1] if abs(R[2,1]) > 1e-7 else 0.0
     r33 = R[2,2] if abs(R[2,2]) > 1e-7 else 0.0
     r31 = R[2,0] if abs(R[2,0]) > 1e-7 else 0.0
 
-    # print(f"R : {R}")
 
-    if r32 == r33 == 0.0:
-        # print("special case")
-        # pitch is close to 90 deg, i.e. cos(pitch) = 0.0
-        # there are an infinitely many solutions, so we set yaw = 0
-        pitch, yaw = PI/2, 0.0
-        # r12: -sin(r)*cos(y) + cos(r)*sin(p)*sin(y) -> -sin(r)
-            # condition r12 to the range of asin [-1, 1]
-        r12 = min(1.0, max(r12, -1.0))
-        roll = -math.asin(r12)
-    else:
-        yaw = math.atan2(r32, r33)        
-        roll = math.atan2(r21, r11)
+    if abs(r31) != 1:
+        roll = math.atan2(r32, r33)        
+        yaw = math.atan2(r21, r11)
         denom = math.sqrt(r11 ** 2 + r21 ** 2)
         pitch = math.atan2(-r31, denom)
+    
+    elif r31 == 1:
+        # pitch is close to -90 deg, i.e. cos(pitch) = 0.0
+        # there are an infinitely many solutions, so we choose one possible solution where yaw = 0
+        # pitch, yaw = -PI/2, 0.0
+        # roll = -math.atan2(r12, r22)
+        pitch, roll = -PI/2, 0.0
+        yaw = -math.atan2(r12, r22)
+    
+    elif r31 == -1:
+        # pitch is close to 90 deg, i.e. cos(pitch) = 0.0
+        # there are an infinitely many solutions, so we choose one possible solution where yaw = 0
+        # pitch, yaw = PI/2, 0.0
+        # roll = math.atan2(r12, r22)
+        pitch, roll = PI/2, 0.0
+        yaw = math.atan2(r12, r22)
+        
 
     return roll, pitch, yaw
 
@@ -159,43 +134,43 @@ def euler_to_rotm(rpy: tuple) -> np.ndarray:
         np.ndarray: A 3x3 rotation matrix.
     """
     R_x = np.array([[1, 0, 0],
-                    [0, math.cos(rpy[2]), -math.sin(rpy[2])],
-                    [0, math.sin(rpy[2]), math.cos(rpy[2])]])
+                    [0, math.cos(rpy[0]), -math.sin(rpy[0])],
+                    [0, math.sin(rpy[0]), math.cos(rpy[0])]])
     R_y = np.array([[math.cos(rpy[1]), 0, math.sin(rpy[1])],
                     [0, 1, 0],
                     [-math.sin(rpy[1]), 0, math.cos(rpy[1])]])
-    R_z = np.array([[math.cos(rpy[0]), -math.sin(rpy[0]), 0],
-                    [math.sin(rpy[0]), math.cos(rpy[0]), 0],
+    R_z = np.array([[math.cos(rpy[2]), -math.sin(rpy[2]), 0],
+                    [math.sin(rpy[2]), math.cos(rpy[2]), 0],
                     [0, 0, 1]])
     return R_z @ R_y @ R_x
 
 
-@dataclass
-class SimData:
-    """Captures simulation data for storage.
-
-    Attributes:
-        x (List[float]): x-coordinates over time.
-        y (List[float]): y-coordinates over time.
-        theta (List[float]): Angles over time.
-        x_dot (List[float]): x-velocity over time.
-        y_dot (List[float]): y-velocity over time.
-        theta_dot (List[float]): Angular velocity over time.
-        v (List[float]): Linear velocity over time.
-        w (List[float]): Angular velocity over time.
-        vx (List[float]): x-component of linear velocity over time.
-        vy (List[float]): y-component of linear velocity over time.
-    """
-    x: List[float] = field(default_factory=list)
-    y: List[float] = field(default_factory=list)
-    theta: List[float] = field(default_factory=list)
-    x_dot: List[float] = field(default_factory=list)
-    y_dot: List[float] = field(default_factory=list)
-    theta_dot: List[float] = field(default_factory=list)
-    v: List[float] = field(default_factory=list)
-    w: List[float] = field(default_factory=list)
-    vx: List[float] = field(default_factory=list)
-    vy: List[float] = field(default_factory=list)
+#@dataclass
+##class SimData:
+##    """Captures simulation data for storage.
+##
+##    Attributes:
+##        x (List[float]): x-coordinates over time.
+##        y (List[float]): y-coordinates over time.
+##        theta (List[float]): Angles over time.
+##        x_dot (List[float]): x-velocity over time.
+##        y_dot (List[float]): y-velocity over time.
+##        theta_dot (List[float]): Angular velocity over time.
+##        v (List[float]): Linear velocity over time.
+##        w (List[float]): Angular velocity over time.
+##        vx (List[float]): x-component of linear velocity over time.
+##        vy (List[float]): y-component of linear velocity over time.
+##    """
+##    x: List[float] = field(default_factory=list)
+##    y: List[float] = field(default_factory=list)
+##    theta: List[float] = field(default_factory=list)
+##    x_dot: List[float] = field(default_factory=list)
+##    y_dot: List[float] = field(default_factory=list)
+##    theta_dot: List[float] = field(default_factory=list)
+##    v: List[float] = field(default_factory=list)
+##    w: List[float] = field(default_factory=list)
+##    vx: List[float] = field(default_factory=list)
+##    vy: List[float] = field(default_factory=list)
 
 
 def check_joint_limits(theta: List[float], theta_limits: List[List[float]]) -> bool:
@@ -278,5 +253,17 @@ def near_zero(arr: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: An array with zeros where values are near zero, otherwise the original values.
     """
-    tol = 1e-6
+    tol = 1e-5
     return np.where(np.isclose(arr, 0, atol=tol), 0, arr)
+
+
+def wraptopi(angle_rad):
+  """Wraps an angle in radians to the range [-pi, pi).
+
+  Args:
+    angle_rad: The angle in radians.
+
+  Returns:
+    The wrapped angle in radians.
+  """
+  return (angle_rad + math.pi) % (2 * math.pi) - math.pi

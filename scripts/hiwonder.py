@@ -7,8 +7,10 @@ Handles the control of the mobile base and 5-DOF robotic arm using commands rece
 
 import time
 import numpy as np
-from board_controller import BoardController
-from servo_bus_controller import ServoBusController
+#from ros_robot_controller_sdk import Board
+#from bus_servo_control import *
+from ServoCmd import *
+
 import utils as ut
 
 # Robot base constants
@@ -19,8 +21,6 @@ BASE_LENGTH_Y = 0.105  # meters
 class HiwonderRobot:
     def __init__(self):
         """Initialize motor controllers, servo bus, and default robot states."""
-        self.board = BoardController()
-        self.servo_bus = ServoBusController()
 
         self.joint_values = [0, 0, 90, -30, 0, 0]  # degrees
         self.home_position = [0, 0, 90, -30, 0, 0]  # degrees
@@ -30,6 +30,7 @@ class HiwonderRobot:
         ]
         self.joint_control_delay = 0.2 # secs
         self.speed_control_delay = 0.2
+        self.time_out = 100
 
         self.move_to_home_position()
 
@@ -57,6 +58,11 @@ class HiwonderRobot:
         position = [0]*3
         
         ######################################################################
+        
+        # update joint values
+        self.update_joint_values()
+
+        print(f'Joint values: {self.get_joint_values()}')
 
         print(f'[DEBUG] XYZ position: X: {round(position[0], 3)}, Y: {round(position[1], 3)}, Z: {round(position[2], 3)} \n')
 
@@ -77,7 +83,7 @@ class HiwonderRobot:
         ######################################################################
 
         # Send speeds to motors
-        self.board.set_motor_speed(speed)
+        #self.board.set_motor_speed(speed)
         time.sleep(self.speed_control_delay)
 
     # -------------------------------------------------------------
@@ -129,23 +135,25 @@ class HiwonderRobot:
 
     def set_joint_value(self, joint_id: int, theta: float, duration=250, radians=False):
         """ Moves a single joint to a specified angle """
-        if not (1 <= joint_id <= 6):
-            raise ValueError("Joint ID must be between 1 and 6.")
+        if not (0 <= joint_id <= 5):
+            raise ValueError("Joint ID must be between 0 and 5.")
 
         if radians:
             theta = np.rad2deg(theta)
 
-        theta = self.enforce_joint_limits(theta, joint_id=joint_id)
-        self.joint_values[joint_id] = theta
-
+        #theta = self.enforce_joint_limits(theta)
         pulse = self.angle_to_pulse(theta)
-        self.servo_bus.move_servo(joint_id, pulse, duration)
+        setServoPulse(joint_id, pulse, 800)
         
         print(f"[DEBUG] Moving joint {joint_id} to {theta}° ({pulse} pulse)")
         time.sleep(self.joint_control_delay)
+        
+        # update the joint value
+        self.update_joint_value(joint_id)
+        
 
 
-    def set_joint_values(self, thetalist: list, duration=250, radians=False):
+    def set_joint_values(self, thetalist: list, duration=1000, radians=False):
         """Moves all arm joints to the given angles.
 
         Args:
@@ -159,13 +167,65 @@ class HiwonderRobot:
             thetalist = [np.rad2deg(theta) for theta in thetalist]
 
         thetalist = self.enforce_joint_limits(thetalist)
-        self.joint_values = thetalist # updates joint_values with commanded thetalist
+        #self.joint_values = thetalist # updates joint_values with commanded thetalist
         thetalist = self.remap_joints(thetalist) # remap the joint values from software to hardware
-
+        
+        #positions = []
         for joint_id, theta in enumerate(thetalist, start=1):
             pulse = self.angle_to_pulse(theta)
-            self.servo_bus.move_servo(joint_id, pulse, duration)
-
+            #positions.append([joint_id, pulse])
+            setServoPulse(joint_id, pulse, 800)
+        #self.board.bus_servo_set_position(1, positions)
+        time.sleep(self.joint_control_delay)
+        
+        # update the joint values
+        self.update_joint_values()
+    
+    
+    def update_joint_value(self, joint_id: int):
+        """ Gets the joint angle """
+        if not (0 <= joint_id <= 5):
+            raise ValueError("Joint ID must be between 0 and 5.")
+        count = 0 
+        while True:
+            #print(f'Finding joint {joint_id}...')
+            #res = self.board.bus_servo_read_position(joint_id)
+            res = getServoPulse(joint_id+1)
+            count += 1
+            #print(f'Finding joint {joint_id} data: {res}')
+            if res is not None:
+                return res
+            if count > self.time_out:
+                print(f'Joint update for {joint_id} is timing out!')
+                return None
+            time.sleep(0.05)
+            
+    
+    def update_joint_values(self):
+        """ Updates the joint angle values by calling "get_joint_value" for all joints """
+        res = [self.update_joint_value(i) for i in range(len(self.joint_values))]
+        res = self.remap_joints(res)
+        
+        # check for Nones and replace with the previous value
+        for i in range(len(res)):
+            if res[i] is None:
+                res[i] = self.joint_values[i]
+            else:
+                res[i] = self.pulse_to_angle(res[i])
+        self.joint_values = res
+        
+    
+    def get_joint_value(self, joint_id: int):
+        """ Gets the joint angle """
+        if not (0 <= joint_id <= 5):
+            raise ValueError("Joint ID must be between 0 and 5.")
+        return self.joint_values[joint_id]
+    
+    
+    def get_joint_values(self):
+        """ Returns all the joint angle values """
+        return self.joint_values
+    
 
     def enforce_joint_limits(self, thetalist: list) -> list:
         """Clamps joint angles within their hardware limits.
@@ -180,8 +240,11 @@ class HiwonderRobot:
 
 
     def move_to_home_position(self):
+        #self.board.set_buzzer(2400, 0.1, 0.9, 1)
+        time.sleep(2)
+    
         print(f'Moving to home position...')
-        self.set_joint_values(self.home_position, duration=800)
+        self.set_joint_values(self.home_position, duration=1000)
         time.sleep(2.0)
         print(f'Arrived at home position: {self.joint_values} \n')
         time.sleep(1.0)
