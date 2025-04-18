@@ -68,8 +68,8 @@ def main():
                 latest_cmd = cmdlist[-1]
                 # accessing the utility button, LB, on the gamepad (uncomment code below to use)
                 # print(f'Utility Button is [ {latest_cmd.utility_btn} ]')
-            #latest_cmd = utils.GamepadCmds()
-            robot.set_robot_commands(latest_cmd)
+                
+                robot.set_robot_commands(latest_cmd)
 
             elapsed = time.time() - cycle_start
             remaining_time = control_interval - elapsed
