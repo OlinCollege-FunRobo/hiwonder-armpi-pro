@@ -2,7 +2,7 @@ inputs==0.5
 numpy==1.24.2
 pigpio==1.78
 pyserial==3.5
-rpi_lgpio==0.6
+#rpi_lgpio==0.6
 rpi_ws281x==5.0.0
 smbus2==0.4.2
 RPi.GPIO==0.7.1

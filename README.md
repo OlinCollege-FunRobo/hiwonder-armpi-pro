@@ -21,6 +21,10 @@ NOTE: This branch is to be used with the version of the robot that's using the *
   - Check the SD card to make sure the number physically written on it matches what you expect.
 
 #### Step 1: Create a virtual environment
+> **Note**:  
+> Please make sure you create the virtual environment using Python 3.8!
+> You can reference it by: ``$ python3.8 ...``
+
 - We strongly recommend that you create a new python virtual environment for all your work on the platform.
 - Follow this [tutorial here](https://docs.python.org/3/tutorial/venv.html).
 
